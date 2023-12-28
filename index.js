@@ -231,7 +231,7 @@ const handleTitle = async (el, fullName) => {
             'alt + click: mute',
         );
     }
-    titleParts.splice(1, 0, '-'.repeat(titleParts.reduce((max,cur)=>Math.max(max,cur.length),0)*1.2));
+    titleParts.splice(1, 0, '-'.repeat(titleParts.reduce((max,cur)=>Math.max(max,cur.length),0) * 1.2));
     el.title = titleParts.join('\n');
 };
 const getNames = ()=>{
