@@ -1,0 +1,34 @@
+.sttc--root {
+  position: absolute;
+  bottom: calc(100% - 16px);
+  right: 3.5em;
+  display: flex;
+  flex-direction: row;
+  align-items: end;
+  z-index: -1;
+  opacity: 0.5;
+  transition: 400ms;
+  overflow: hidden;
+  pointer-events: none;
+  max-width: calc(100% - 7em);
+  mask: linear-gradient(90deg, transparent 0%, black 3%, black 97%, transparent 100%);
+}
+.sttc--root:hover {
+  opacity: 1;
+}
+.sttc--root > .sttc--wrapper {
+  height: 140px;
+  transform: translateY(50%);
+  transition: 400ms;
+  filter: drop-shadow(0 0 6px rgba(0 0 0 / 0.5));
+  cursor: pointer;
+}
+.sttc--root > .sttc--wrapper:hover {
+  transform: translateY(10%);
+}
+.sttc--root > .sttc--wrapper > .sttc--img {
+  height: 100%;
+  object-fit: contain;
+  object-position: top;
+  pointer-events: all;
+}
