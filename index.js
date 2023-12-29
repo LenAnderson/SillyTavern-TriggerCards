@@ -1,4 +1,4 @@
-import { chat_metadata, eventSource, event_types, sendSystemMessage } from '../../../../script.js';
+import { chat_metadata, eventSource, event_types, getRequestHeaders, sendSystemMessage } from '../../../../script.js';
 import { getContext, saveMetadataDebounced } from '../../../extensions.js';
 import { executeSlashCommands, registerSlashCommand } from '../../../slash-commands.js';
 import { delay } from '../../../utils.js';
@@ -33,11 +33,14 @@ const loadSettings = ()=>{
         actionQrSet: null,
         memberQrSet: null,
         memberList: null,
+        expression: 'joy',
+        extensions: ['png', 'webp', 'gif'],
+        grayscale: true,
     }, chat_metadata.triggerCards ?? {});
     chat_metadata.triggerCards = settings;
 };
 const init = ()=>{
-    registerSlashCommand('tc-on', (args, value)=>activate(args, value), [], '<span class="monospace">[actions=qrSetName members=qrSetName reset=true] ([member1, member2, ...])</span> – Activate trigger cards', true, true);
+    registerSlashCommand('tc-on', (args, value)=>activate(args, value), [], '<span class="monospace">[actions=qrSetName members=qrSetName emote=joy extensions=png,webp,gif reset=true] ([member1, member2, ...])</span> – Activate trigger cards', true, true);
     registerSlashCommand('tc-off', (args, value)=>deactivate(), [], 'Deactivate trigger cards', true, true);
     registerSlashCommand('tc?', (args, value)=>showHelp(), [], 'Show help for trigger cards', true, true);
 };
@@ -45,10 +48,19 @@ eventSource.on(event_types.APP_READY, ()=>init());
 const activate = (args, members) => {
     if (!groupId) return;
     const memberList = members?.split(/\s*,\s*/)?.filter(it=>it);
-    settings.actionQrSet = args.actions ?? (args.reset ? null : settings.actionQrSet);
-    settings.memberQrSet = args.members ?? (args.reset ? null : settings.memberQrSet);
-    settings.memberList = memberList && memberList.length > 0 ? memberList : (args.reset ? null : settings.memberList);
-    if (settings.memberList && settings.memberList.filter(it=>it).length <= 1) settings.memberList = null;
+    const extList = args.extensions?.split(',')?.filter(it=>it);
+    let gray;
+    try {
+        gray = JSON.parse(args.gray ?? args.grey ?? 'null');
+    } catch { /* empty */ }
+    settings.actionQrSet = args.actions ?? (args.reset ? undefined : settings.actionQrSet);
+    settings.memberQrSet = args.members ?? (args.reset ? undefined : settings.memberQrSet);
+    settings.memberList = memberList && memberList.length > 0 ? memberList : (args.reset ? undefined : settings.memberList);
+    if (settings.memberList && settings.memberList.filter(it=>it).length <= 0) settings.memberList = undefined;
+    settings.expression = args.emote ?? (args.reset ? 'joy' : settings.expression) ?? 'joy';
+    settings.extensions = extList && extList.length > 0 ? extList : (args.reset ? ['png', 'webp', 'gif'] : settings.extList) ?? ['png', 'webp', 'gif'];
+    if (settings.extensions && settings.extensions.filter(it=>it).length <= 0) settings.extensions = ['png', 'webp', 'gif'];
+    settings.grayscale = gray ?? (args.reset ? true : settings.grayscale) ?? true;
     settings.isEnabled = true;
     saveMetadataDebounced();
     restart();
@@ -179,7 +191,7 @@ const handleClick = async (/**@type {MouseEvent}*/evt, /**@type {String}*/fullNa
                 }
             } else if (settings.memberQrSet) {
                 try {
-                    await quickReplyApi.executeQuickReply(settings.memberQrSet, name);
+                    await quickReplyApi.executeQuickReply(settings.memberQrSet, fullName, { name });
                 } catch (ex) {
                     toastr.error(ex.message);
                 }
@@ -234,15 +246,17 @@ const handleTitle = async (el, fullName) => {
     titleParts.splice(1, 0, '-'.repeat(titleParts.reduce((max,cur)=>Math.max(max,cur.length),0) * 1.2));
     el.title = titleParts.join('\n');
 };
-const getNames = ()=>{
-    if (settings.memberList && settings.memberList.length > 0) {
-        return settings.memberList;
-    }
-    if (settings.memberQrSet) {
-        try {
-            return quickReplyApi.listQuickReplies(settings.memberQrSet);
-        } catch {
-            return [];
+const getNames = (present = false)=>{
+    if (!present) {
+        if (settings.memberList && settings.memberList.length > 0) {
+            return settings.memberList;
+        }
+        if (settings.memberQrSet) {
+            try {
+                return quickReplyApi.listQuickReplies(settings.memberQrSet);
+            } catch {
+                return [];
+            }
         }
     }
     const context = getContext();
@@ -251,9 +265,22 @@ const getNames = ()=>{
     const names = members.map(it=>it.name);
     return names;
 };
+const findImage = async(name) => {
+    for (const ext of settings.extensions) {
+        const url = `/characters/${name}/${settings.expression}.${ext}`;
+        const resp = await fetch(url, {
+            method: 'HEAD',
+            headers: getRequestHeaders(),
+        });
+        if (resp.ok) {
+            return url;
+        }
+    }
+};
 const updateMembers = async() => {
     while (settings?.isEnabled && isRunning) {
         const names = getNames();
+        const present = getNames(true);
         // [1,2,3,4,5,6,7,8].forEach(it=>names.push(...members.map(x=>x.name)));
         const removed = nameList.filter(it=>names.indexOf(it) == -1);
         const added = names.filter(it=>nameList.indexOf(it) == -1);
@@ -272,7 +299,7 @@ const updateMembers = async() => {
                 const img = document.createElement('img'); {
                     img.classList.add('sttc--img');
                     img.setAttribute('data-character', name);
-                    img.src = `/characters/${name.split('::')[0]}/joy.png`;
+                    img.src = await findImage(name.split('::')[0]);
                     wrap.append(img);
                 }
                 const before = imgs.find(it=>name.localeCompare(it.getAttribute('data-character')) == -1);
@@ -287,6 +314,13 @@ const updateMembers = async() => {
                 }
             }
         }
+        imgs.forEach(img=>{
+            if (settings.grayscale && present.indexOf(img.getAttribute('data-character')) == -1) {
+                img.closest('.sttc--wrapper').classList.add('sttc--absent');
+            } else {
+                img.closest('.sttc--wrapper').classList.remove('sttc--absent');
+            }
+        })
         await delay(500);
     }
 };

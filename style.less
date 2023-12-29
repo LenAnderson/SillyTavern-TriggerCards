@@ -25,6 +25,9 @@
 		transition: 400ms;
 		filter: drop-shadow(0 0 6px rgba(0 0 0 / 0.5));
 		cursor: pointer;
+		&.sttc--absent > .sttc--img {
+			filter: grayscale(1);
+		}
 		&:hover {
 			transform: translateY(10%);
 		}
@@ -33,6 +36,7 @@
 			object-fit: contain;
 			object-position: top;
 			pointer-events: all;
+			transition: 400ms;
 		}
 	}
 }
