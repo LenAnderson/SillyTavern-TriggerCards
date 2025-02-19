@@ -16,7 +16,7 @@ export class Settings {
     /**@type {string} */ memberQrSet = null;
     /**@type {string[]} */ memberList = null;
     /**@type {string} */ expression = 'joy';
-    /**@type {string[]} */ extensions = ['png', 'webp', 'gif'];
+    /**@type {string[]} */ extensions = ['png', 'webp', 'gif','jpeg', 'jpg'];
     /**@type {boolean} */ grayscale = true;
     /**@type {boolean} */ mute = true;
     /**@type {{[index:string]:string}} */ costumes = {};

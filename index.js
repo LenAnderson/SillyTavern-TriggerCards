@@ -374,17 +374,26 @@ const getMuted = ()=>{
     const names = members.map(it=>it.name);
     return names;
 };
-const findImage = async(name) => {
-    for (const ext of settings.extensions) {
-        const url = `/characters/${name}/${settings.expression}.${ext}`;
-        const resp = await fetch(url, {
-            method: 'HEAD',
-            headers: getRequestHeaders(),
-        });
-        if (resp.ok) {
-            return url;
-        }
+const findImage = async (name) => {
+  for (const ext of settings.extensions) {
+    const url = `/characters/${name}/${settings.expression}.${ext}`;
+    const resp = await fetch(url, {
+      method: "HEAD",
+      headers: getRequestHeaders(),
+    });
+    if (resp.ok) {
+      return url;
+    } else {
+      const urlThumb = `/thumbnail?type=avatar&file=${name}.${ext}`;
+      const respThumb = await fetch(urlThumb, {
+        method: "HEAD",
+        headers: getRequestHeaders(),
+      });
+      if (respThumb.ok) {
+        return urlThumb;
+      }
     }
+  }
 };
 const updateMembers = async() => {
     let expression;
